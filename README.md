@@ -8,6 +8,54 @@ Implementation and deployment bundle are complete. Cloudflare rejected the attem
 
 Workers Paid starts at $5 USD/month, with usage-based charges. Pricing: https://developers.cloudflare.com/workers/platform/pricing/ and https://developers.cloudflare.com/dynamic-workers/pricing/
 
+## Run locally with Docker (no Cloudflare account)
+
+Install Docker with Docker Compose, then:
+
+```sh
+git clone https://github.com/marco-machado/poc-cf-os.git
+cd poc-cf-os
+docker compose up --build
+```
+
+Open http://localhost:8787. If you already cloned the repository, run `git pull` first. Building requires internet access to download Node and npm dependencies. Running the fixture requires no Cloudflare credentials, paid plan, or model API key and makes no inference requests.
+
+The footer and execution log identify local test mode. This mode uses fixed JavaScript responses in place of a language model, while executing the actual Worker, Dynamic Worker sandbox, ticket RPC service, and Durable Objects locally through Miniflare/workerd. Ordinary prompts all run the same urgent-ticket comparison; they do not receive general AI answers.
+
+Try these prompts:
+
+| Prompt | Expected result |
+| --- | --- |
+| `Compare customers` | Urgent unresolved counts: Juniper 3, Acme 2, Northstar 1, Orbit 0. |
+| `recover` | A failed tool call followed by corrected code returning 16 tickets. |
+| `network` | An outbound fetch rejected by the sandbox. |
+| `secrets` | Sandbox binding names: only `TICKETS`. |
+
+Fixture keywords are case-sensitive. You can submit these in the same conversation. Expand the execution log to inspect code, results, and errors.
+
+Stop with Ctrl+C, then `docker compose down` to remove the container. Local session data is temporary: it survives page reloads while the process runs, but resets when the process restarts. The usual demo request limits still apply; local requests share the same IP budget. Restart to reset local state and budgets.
+
+Run the integration suite in a separate, temporary container:
+
+```sh
+docker compose run --rm --no-deps demo npm test
+```
+
+If port 8787 is busy, use `LOCAL_PORT=8788 docker compose up --build` and open http://localhost:8788 (POSIX shells). Compose only exposes the server on your machine's loopback interface. Use `localhost` in your browser for the session cookie and secure browser APIs.
+
+### Without Docker
+
+With Node.js 22+ installed:
+
+```sh
+npm ci
+npm run preview:test
+```
+
+Open http://localhost:8787. Run `npm test` for the integration suite. Optional `LOCAL_HOST` and `LOCAL_PORT` environment variables configure the fixture server; it defaults to `127.0.0.1:8787`. Stop the preview before running tests on the same port, or use `LOCAL_PORT=0 npm test` to allocate a free port.
+
+Docker is not available in the implementation environment, so the container build itself has not been executed there. The local workerd integration suite has been verified directly.
+
 ## Run and deploy
 
 Requires Node.js 22+ and a Cloudflare account with Workers Paid for deployment.
