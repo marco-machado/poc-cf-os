@@ -1,0 +1,10 @@
+node_modules/
+.wrangler/
+dist/
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+*.log
+metadata-doc.tmp
+visual-verify.mjs

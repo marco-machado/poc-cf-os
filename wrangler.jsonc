@@ -1,0 +1,12 @@
+{
+  "name": "code-mode-lab",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "ai": {"binding": "AI"},
+  "worker_loaders": [{"binding": "LOADER"}],
+  "durable_objects": {"bindings": [{"name": "SESSIONS", "class_name": "Session"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["Session"]}],
+  "services": [{"binding": "TICKETS", "service": "code-mode-lab", "entrypoint": "Tickets"}],
+  "rules": [{"type": "Text", "globs": ["**/*.html", "**/*.css", "**/*.js.txt"], "fallthrough": true}]
+}

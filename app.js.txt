@@ -1,0 +1,32 @@
+const $=id=>document.getElementById(id);
+let state={runs:[],active:null},selected=null,lastSerialized='',pollTimer;
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
+function render(){
+ const serialized=JSON.stringify(state);if(serialized===lastSerialized)return;lastSerialized=serialized;
+ const busy=Boolean(state.active);$('submit').disabled=busy;$('prompt').disabled=busy;document.querySelectorAll('[data-prompt]').forEach(b=>b.disabled=busy);
+ $('submit').textContent=busy?'Running…':'▶  Run agent';
+ if(state.runs.length){$('messages').replaceChildren();for(const run of state.runs){
+  const u=el('article','message user');u.append(el('div','label','YOU'),el('div','body',run.prompt));$('messages').append(u);
+  const a=el('article','message assistant');a.append(el('div','label','AGENT'),el('div','body'+(run.error?' error':''),run.answer||run.error||(run.stage+'…')));
+  const link=el('button','run-link',`${run.steps.filter(s=>s.kind==='execution').length} executions · ${run.status==='running'?'in progress':run.status}`);link.onclick=()=>{selected=run.id;renderLogs();};a.append(link);$('messages').append(a);
+ }$('messages').scrollTop=$('messages').scrollHeight;}
+ const active=state.runs.find(r=>r.id===state.active);$('status').textContent=active?active.stage+'…':'';renderLogs();
+}
+function renderLogs(){
+ const run=state.runs.find(r=>r.id===selected)||state.runs.at(-1);$('logs').replaceChildren();if(!run)return;
+ $('logHint').textContent=run.status==='running'?run.stage+'…':`${run.model.split('/').at(-1)} · ${((run.finishedAt-run.startedAt)/1000).toFixed(1)}s`;
+ $('clearSelection').hidden=!selected;
+ run.steps.forEach((s,i)=>{const d=el('details','step');d.open=i===run.steps.length-1;d.append(el('summary',s.error?'error':'',s.description||'Response recovery'));
+  if(s.code){d.append(el('small','',`${s.status}${s.durationMs!==undefined?' · '+s.durationMs+' ms':''}`),el('h3','','JavaScript'),el('pre','',s.code));}
+  if(s.calls?.length){d.append(el('h3','','Tool calls'),el('pre','',s.calls.map(c=>`tickets.${c.method}(${c.args.map(a=>JSON.stringify(a)).join(', ')})${c.count!==undefined?' → '+c.count+' rows':''}${c.error?' → '+c.error:''}`).join('\n')));}
+  if(s.result!==undefined)d.append(el('h3','','Result'),el('pre','',JSON.stringify(s.result,null,2)));
+  if(s.error)d.append(el('h3','','Error'),el('pre','error',s.error));$('logs').append(d);
+ });
+}
+async function refresh(){try{const r=await fetch('/api/session');if(!r.ok)throw Error('Unable to load session');state=await r.json();render();if(state.active)pollTimer=setTimeout(refresh,1200);}catch(e){$('status').textContent=e.message;if(state.active)pollTimer=setTimeout(refresh,3000);}}
+$('composer').onsubmit=async e=>{e.preventDefault();const prompt=$('prompt').value.trim();if(!prompt||state.active)return;$('submit').disabled=true;$('status').textContent='Starting agent…';selected=null;try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,requestId:crypto.randomUUID()})});const data=await r.json();if(!r.ok)throw Error(data.error||'Could not start agent');$('prompt').value='';clearTimeout(pollTimer);await refresh();}catch(e){$('status').textContent=e.message;$('submit').disabled=false;}};
+$('prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('composer').requestSubmit();}};
+document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{$('prompt').value=b.dataset.prompt;$('composer').requestSubmit();});
+$('clearSelection').onclick=()=>{selected=null;renderLogs();};
+$('dataButton').onclick=async()=>{try{const r=await fetch('/api/data');if(!r.ok)throw Error('Unable to load sample data');const data=await r.json();$('dataRows').replaceChildren();for(const t of data.tickets){const row=el('tr');[t.id,data.customers.find(c=>c.id===t.customerId)?.name,t.subject,t.status,t.priority,t.ageHours+'h'].forEach(v=>row.append(el('td','',v)));$('dataRows').append(row);}$('dataDialog').showModal();}catch(e){$('status').textContent=e.message;}};
+$('closeData').onclick=()=>$('dataDialog').close();refresh();

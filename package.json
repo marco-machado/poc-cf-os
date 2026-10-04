@@ -1,0 +1,16 @@
+{
+  "name": "code-mode-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "node --check worker.js && node --check < app.js.txt",
+    "test": "node verify.mjs",
+    "preview:test": "node local-verify.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.147.0",
+    "miniflare": "5.20261001.0-alpha"
+  }
+}
